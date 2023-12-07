@@ -11,9 +11,9 @@ hands_raw = [
 ]
 
 # actual data
-# f = open("private/aoc2023_7_input.txt", "r")
-# hands_raw = f.readlines()
-# f.close()
+f = open("private/aoc2023_7_input.txt", "r")
+hands_raw = f.readlines()
+f.close()
 
 card_types = {
     'A': 13,
@@ -46,9 +46,13 @@ for line in hands_raw:
     line = line.strip() # get rid of newline
     (hand, bid) = line.split()
     card_counts = {}
+    card_vals = []
     for card in hand:
+        # count each type of card
         if not card_counts.get(card, None):
             card_counts[card] = hand.count(card)
+        # record the val of each card, in order
+        card_vals.append(card_types[card])
     
     # analyze the hand
     triples = 0
@@ -65,7 +69,7 @@ for line in hands_raw:
             pairs = pairs + 1
 
     if not hand_type:
-        if triples == 1 and pairs == 2:
+        if triples == 1 and pairs == 1:
             hand_type = 'full_house'
         elif triples == 1 and pairs == 0:
             hand_type = 'three_of_a_kind'
@@ -80,14 +84,60 @@ for line in hands_raw:
         'hand': hand,
         'bid': bid,
         'card_counts': card_counts,
-        'hand_type': hand_type
+        'hand_type': hand_type,
+        'card_vals': card_vals
     })
 
-print(hands)
+# group by hand type
+grouped_by_hand_type = {}
+for type_name, type_rank in hand_types.items():
+    grouped_by_hand_type[type_rank] = {}
+    grouped_by_hand_type[type_rank]['unsorted'] = []
+for hand in hands:
+    hand_type_id = hand_types[hand['hand_type']]
+    grouped_by_hand_type[hand_type_id]['unsorted'].append(hand)
 
-# NOT YET DONE
+def insertion_sort(arr): # thank you https://www.geeksforgeeks.org/python-program-for-insertion-sort/
+    n = len(arr)  # Get the length of the array
+    if n <= 1:
+        return arr # If the array has 0 or 1 element, it is already sorted, so return
+    for i in range(1, n):  # Iterate over the array starting from the second element
+        key = arr[i]  # Store the current element as the key to be inserted in the right position
+        j = i-1
+        while j >= 0 and hand1_lt_hand2(key, arr[j]):  # Move elements greater than key one position ahead
+            arr[j+1] = arr[j]  # Shift elements to the right
+            j -= 1
+        arr[j+1] = key  # Insert the key in the correct position
+    return arr
 
-# TODO
-# - rank by hand type, then by high card (starting with first card in hand)
-# - calculate bid values (bid * rank)
-# - add together bid values
+def hand1_lt_hand2(hand1, hand2):
+    # return True if hand 1 is less than hand 2
+    # return False if hand 1 is greater than hand 2
+    n = len(hand1['card_vals']) # we're assuming hands are the same length, so we'll use this length for both
+    for i in range(0, n):
+        if hand1['card_vals'][i] == hand2['card_vals'][i]: # this position is equivalent; move to the next
+            continue
+        if hand1['card_vals'][i] < hand2['card_vals'][i]:
+            return True
+        if hand1['card_vals'][i] > hand2['card_vals'][i]:
+            return False
+    return False # if we got here, the hands are identical. the puzzle doesn't say how to handle that, so we'll just say hand 1 wins.
+
+# sort each hand type group by high cards
+for type_rank in grouped_by_hand_type.keys():
+    grouped_by_hand_type[type_rank]['sorted'] = insertion_sort(grouped_by_hand_type[type_rank]['unsorted'])
+
+# do the final ranking (lowest index == weakest hand)
+final_ranking = []
+for i in range(1,len(hand_types)+1):
+    for hand in grouped_by_hand_type[i]['sorted']:
+        final_ranking.append(hand)
+
+# calculate bids
+winnings = 0
+for idx, hand in enumerate(final_ranking):
+    rank = idx+1 # the index starts at zero but we want ranking to start at 1
+    hand_winnings = rank * int(hand['bid'])
+    winnings = winnings + hand_winnings
+
+print("part 1 answer: ", winnings)
