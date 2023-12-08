@@ -1,3 +1,4 @@
+
 # https://adventofcode.com/2023/day/8
 
 import re
@@ -7,7 +8,7 @@ import re
 nodes_raw = [
     'RL',
     '',
-    'AAA = (BBB, CCC)', # this is a tuple - can i just execute it directly rather than parsing it manually?
+    'AAA = (BBB, CCC)',
     'BBB = (DDD, EEE)',
     'CCC = (ZZZ, GGG)',
     'DDD = (DDD, DDD)',
@@ -43,27 +44,14 @@ for line in nodes_raw:
         match = re.search("^(\w{3}) = \((\w{3}), (\w{3})\)$", line)
         nodes[match.group(1)] = {'L': match.group(2), 'R': match.group(3)}
 
-# print(directions)
-# print(nodes)
-
 start_node = 'AAA'
 end_node = 'ZZZ'
 
-def get_next_node(node, direction_index, move_count, end_node):
-    move_count = move_count+1
-    # print('move count', move_count)
-    direction = directions[direction_index]
-    next_node = nodes[node][direction]
-    if next_node == end_node: # we're done
-        print('answer part 1:', move_count)
-        return move_count
-    else: # recurse
-        if direction_index+1 >= len(directions):
-            next_direction_index = 0
-        else:
-            next_direction_index = direction_index+1
-        get_next_node(next_node, next_direction_index, move_count, end_node)
+move_count = 0
+next_node = start_node
+while next_node != end_node:
+    for direction in directions:
+        move_count = move_count+1
+        next_node = nodes[next_node][direction]
 
-move_count_final = get_next_node(start_node, 0, 0, end_node)
-# print(move_count_final) # TODO why isn't this working? is it not bubbling up?
-# NOT DONE - there's a bug, maximum recursion depth reached
+print('answer part 1:', move_count)
