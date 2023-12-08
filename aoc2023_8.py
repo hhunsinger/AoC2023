@@ -44,6 +44,9 @@ for line in nodes_raw:
         match = re.search("^(\w{3}) = \((\w{3}), (\w{3})\)$", line)
         nodes[match.group(1)] = {'L': match.group(2), 'R': match.group(3)}
 
+print(nodes)
+
+# part 1
 start_node = 'AAA'
 end_node = 'ZZZ'
 
@@ -55,3 +58,10 @@ while next_node != end_node:
         next_node = nodes[next_node][direction]
 
 print('answer part 1:', move_count)
+
+# Part 1
+# I initially solved with recursion, which worked with the test data but went too many recursion levels deep with the real data.
+# Got stuck trying to write an algorithm for traversing the binary tree without recursion. I got a hint that I only need recursion
+# if I don't have directions -- but the puzzle gives us directions. So instead I can just iterate thru the directions. Iterating
+# through the directions was actually my initial thought when I first started, but I couldn't figure out how to make it loop and
+# then stop when necessary. I had forgotten about while loops... XD
