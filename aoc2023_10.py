@@ -38,19 +38,8 @@ pipes_raw = load_input()
 # S is the starting position of the animal; there is a pipe on this tile, but your sketch doesn't show what shape the pipe has.
 
 # create a legend - map which directions you can go from each char
-legend = {
-    '|': ['up', 'down'],
-    '-': ['right', 'left'],
-    'L': ['up', 'right'],
-    'J': ['up', 'left'],
-    '7': ['down', 'left'],
-    'F': ['down', 'right'],
-    '.': [],
-    'S': ['up', 'down', 'left', 'right'] # might not need to define this - there's only one and we'll treat it special
-}
-
-# create a legend - map which directions you can go from each char
-# valid chars # TODO is there a pattern here so we could define these programmatically? in a way that's easy to understand?
+# valid chars 
+# TODO is there a pattern here so we could define these programmatically? in a way that's easy to understand? I came up with this manually.
 # | / up = |,7,F
 # | / down = |,L,J
 # - / right = -, 7, J
@@ -67,7 +56,7 @@ legend = {
 # S / down = |, J, L
 # S / left = -, L, F
 # S / right = -, J, 7
-legend2 = {
+legend = {
     '|': {
             'up': ['|','7','F'],
             'down': ['|','L','J']
@@ -101,129 +90,130 @@ legend2 = {
     '.': {}
 }
 
-# build up coordinate / character map
+# build up coordinate -> character map by parsing input data
 chars_by_coords = {}
-start = {}
+start = ''
 for idy, line in enumerate(pipes_raw): # iterate thru lines
-    coords = {}
     for idx, char in enumerate(line): # iterate thru chars in the line to find the coords of each char
         coord_str = ','.join([str(idx), str(idy)])
         chars_by_coords[coord_str] = char # store characters by coordinate (look up chars by coords)
 
-        # find the start S
-        if char == 'S': # this assumes only one S in the dataset
+        # find the start (S) - this assumes only one S in the dataset
+        if char == 'S':
             start = coord_str
 
-print("chars_by_coords:", chars_by_coords)
-# print("start", start)
-
 def get_neighbor_coords(char, coords):
-    char_dirs = legend2[char]
-    neighbor_coords = []
+    '''
+    Get a list of coordinates that are neighbors of character `char` at coordinates `coords`
+    '''
+    char_dirs = legend[char] # directions we can go from this character
+    neighbor_coords = [] # init a list of neighbor coordinates
     (x,y) = coords.split(',')
-    for dir in char_dirs.keys():
-        foo = { # default val - will pass if that direction is out of bounds
+    # iterate thru possible directions for this character and build up array of neighbor coords
+    for dir in char_dirs.keys(): 
+        # init a default None val to use if that direction is out of bounds
+        neighbor_coord = { 
             'dir': dir, 
             'coords': None
         }
-        match dir: # TODO update based on new data structure
-            case 'up':
+        match dir:
+            case 'up': # TODO can we refactor these cases?
                 up = int(y)-1
-                if up < 0: up = None # TODO i think there's a better python syntax for this
+                if up < 0: up = None # out of bounds
                 if up != None: 
-                    foo = { 
+                    neighbor_coord = { 
                         'dir': dir, 
                         'coords': ','.join([x,str(up)])
                     }
-                    neighbor_coords.append(foo)
+                    neighbor_coords.append(neighbor_coord)
                 else:
-                    neighbor_coords.append(foo)
+                    neighbor_coords.append(neighbor_coord)
             
             case 'left':
                 left = int(x)-1
                 if left < 0: left = None
                 if left != None: 
-                    foo = { 
+                    neighbor_coord = { 
                         'dir': dir,
                         'coords': ','.join([str(left),y])
                     }
-                    neighbor_coords.append(foo)
+                    neighbor_coords.append(neighbor_coord)
                 else:
-                    neighbor_coords.append(foo)
+                    neighbor_coords.append(neighbor_coord)
             
             case 'down':
                 down = int(y)+1
-                if down > len(pipes_raw)-1: down = None # TODO check for off by one
+                if down > len(pipes_raw)-1: down = None
                 if down != None: 
-                    foo = { 
+                    neighbor_coord = { 
                         'dir': dir,
                         'coords': ','.join([x,str(down)])
                     }
-                    neighbor_coords.append(foo)
+                    neighbor_coords.append(neighbor_coord)
                 else:
-                    neighbor_coords.append(foo)
+                    neighbor_coords.append(neighbor_coord)
 
             case 'right':
                 right = int(x)+1
-                if right > len(pipes_raw[0])-1: right = None # TODO check for off by one
+                if right > len(pipes_raw[0])-1: right = None
                 if right != None: 
-                    foo = { 
+                    neighbor_coord = { 
                         'dir': dir,
                         'coords': ','.join([str(right), y])
                     }
-                    neighbor_coords.append(foo)
+                    neighbor_coords.append(neighbor_coord)
                 else:
-                    neighbor_coords.append(foo)
+                    neighbor_coords.append(neighbor_coord)
     return neighbor_coords
 
 def is_valid_direction(start_char, next_char, direction_traveled):
-    if legend2[start_char].get(direction_traveled, None): # is this a direction we can travel from the start char?
-        if next_char in legend2[start_char][direction_traveled]: # is the next char a char we can travel to from the start char?
+    '''
+    Function to see if pipe A (start_char) and pipe B (next_char) fit together, based
+    on the definition in the legend. i.e. is this a valid direction to go?
+    '''
+    if legend[start_char].get(direction_traveled, None): # is this a direction we can travel from the start char?
+        if next_char in legend[start_char][direction_traveled]: # is the next char a char we can travel to from the start char?
             return True
         else:
             return False
     else:
         return False
 
-def follow_directions(char, coords, neighbor_coords, prev_coords, move_count):
-    move_count = move_count + 1
-    new_char = None
-    print("starting with", char)
-    print("   prev coords", prev_coords)
-    print("   all neighbor corods", neighbor_coords)
-    for neighbor_coord in neighbor_coords:
-        print("   this neighbor coords", neighbor_coord['coords'])
-        if neighbor_coord['coords'] == prev_coords or neighbor_coord['coords'] == None: # don't go backwards or out of bounds
-            print("     skipping - backwards")
+# vals to start our journey
+char = 'S'
+coords = start
+prev_coords = ''
+move_count = 0
+done = False
+while done != True: # and we're off
+    move_count = move_count + 1 # increment move count
+    neighbor_coords = get_neighbor_coords(char, coords) # get neighbor coordinates for the current char
+    for neighbor_coord in neighbor_coords: # figure out which of the neighbors is one we can travel to
+         
+        # don't go backwards or out of bounds
+        if neighbor_coord['coords'] == prev_coords or neighbor_coord['coords'] == None:
             continue 
-        start_char = char
-        next_char = chars_by_coords[neighbor_coord['coords']]
-        print("   evaluating next_char", next_char)
-        print("   direction", neighbor_coord['dir'])
-        if next_char == '.':
-            print("     skipping - .")
-            continue
-        if next_char == 'S':
-            # we've reached the end of the loop!
-            print("done!")
-            print("move count", move_count)
-            print("answer part 1", move_count/2) # get the furthest point by dividing the moves in half
-            return move_count # TODO check for off by 1
-        is_valid_dir = is_valid_direction(start_char, next_char, neighbor_coord['dir'])
-        print("   is valid dir", is_valid_dir)
-        if is_valid_dir == True:
-            new_char = next_char
-            new_coords = neighbor_coord['coords']
-            new_neighbor_coords = get_neighbor_coords(new_char, new_coords)
-            print("  found valid direction - breaking")
-            break # break out of this for loop and then recurse
-    if not new_char:
-        print("didn't find a valid route from here")
-        return
-    print("recursing")
-    move_count = follow_directions(new_char, new_coords, new_neighbor_coords, coords, move_count)
 
-neighbor_coords = get_neighbor_coords('S', start)
-# print('neighbor coords', neighbor_coords)
-move_count = follow_directions('S', start, neighbor_coords, None, 0) # no previous coords at the beginning
-print("move count", move_count) # TODO why is it not bubbling up?
+         # what's the character at this neighbor coord?
+        next_char = chars_by_coords[neighbor_coord['coords']]
+
+        # we can never travel to a . char, so ignore it
+        if next_char == '.':
+            continue
+
+        # check if we've reached the end of the loop
+        if next_char == 'S':
+            # we're back where we started!
+            done = True # break out of the loop
+
+        # is the next char fit with this char?
+        is_valid_dir = is_valid_direction(char, next_char, neighbor_coord['dir'])
+
+        # if so, set our starting values to this new char/coords so we move forward
+        if is_valid_dir == True:
+            prev_coords = coords
+            char = next_char
+            coords = neighbor_coord['coords']
+            break # break out of this for loop and move back to the top of the while loop (i hope)
+
+print('answer part 1:', int(move_count/2)) # we have a problem if it's not divisible by 2
