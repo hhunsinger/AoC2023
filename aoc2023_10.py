@@ -20,13 +20,54 @@ pipes_raw = [
     'LJ.LJ'
 ]
 
+# solution part 2 = 4
+pipes_raw = [
+    '...........',
+    '.S-------7.',
+    '.|F-----7|.',
+    '.||.....||.',
+    '.||.....||.',
+    '.|L-7.F-J|.',
+    '.|..|.|..|.',
+    '.L--J.L--J.',
+    '...........'
+]
+
+# solution part 2 = 8
+pipes_raw = [
+    '.F----7F7F7F7F-7....',
+    '.|F--7||||||||FJ....',
+    '.||.FJ||||||||L7....',
+    'FJL7L7LJLJ||LJ.L-7..',
+    'L--J.L7...LJS7F-7L7.',
+    '....F-J..F7FJ|L7L7L7',
+    '....L7.F7||L7|.L7L7|',
+    '.....|FJLJ|FJ|F7|.LJ',
+    '....FJL-7.||.||||...',
+    '....L---J.LJ.LJLJ...'
+]
+
+# solution part 2 = 10
+# pipes_raw = [
+#     'FF7FSF7F7F7F7F7F---7',
+#     'L|LJ||||||||||||F--J',
+#     'FL-7LJLJ||||||LJL-77',
+#     'F--JF--7||LJLJ7F7FJ-',
+#     'L---JF-JLJ.||-FJLJJ7',
+#     '|F|F-JF---7F7-L7L|7|',
+#     '|FFJF7L7F-JF7|JL---7',
+#     '7-L-JL7||F7|L7F-7F7|',
+#     'L.L7LFJ|||||FJL7||LJ',
+#     'L7JLJL-JLJLJL--JLJ.L'
+# ]
+
 # actual data
 def load_input(file='private/aoc2023_10_input.txt'):
     with open(file, 'r') as myfile:
         input_array = myfile.read().splitlines()
     return input_array
 
-pipes_raw = load_input()
+# pipes_raw = load_input()
 
 # | is a vertical pipe connecting north and south.
 # - is a horizontal pipe connecting east and west.
@@ -184,6 +225,7 @@ char = 'S'
 coords = start
 prev_coords = ''
 move_count = 0
+border_coords = [start] # part 2
 done = False
 while done != True: # and we're off
     move_count = move_count + 1 # increment move count
@@ -214,6 +256,36 @@ while done != True: # and we're off
             prev_coords = coords
             char = next_char
             coords = neighbor_coord['coords']
+            border_coords.append(coords)
             break # break out of this for loop and move back to the top of the while loop (i hope)
 
 print('answer part 1:', int(move_count/2)) # we have a problem if it's not divisible by 2
+
+# part 2
+
+print("border coords", border_coords)
+
+# how big is our matrix?
+row_count = len(pipes_raw)
+column_count = len(pipes_raw[0])
+
+inside_count = 0
+toggle = False
+y = 0
+while y in range(0,row_count-1): # TODO off by 1?
+    x = 0
+    while x in range(0,column_count-1): # TODO off by 1?
+        coord_str = ','.join([str(x), str(y)])
+        print('checking coords', coord_str)
+        if coord_str in border_coords: # this is a border
+            toggle = not toggle # each time we reach a border, we either start or stop counting
+            print("toggle: ", toggle)
+        else: # this is not a border
+            if toggle == True: # if we're inside the border, count it
+                print("   found one!", coord_str)
+                inside_count = inside_count + 1
+        x = x + 1
+    toggle = False # always reset the toggle before starting the next line
+    y = y + 1
+
+print('answer part 2:', inside_count)
