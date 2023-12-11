@@ -26,7 +26,7 @@ def load_input(file='private/aoc2023_10_input.txt'):
         input_array = myfile.read().splitlines()
     return input_array
 
-# pipes_raw = load_input()
+pipes_raw = load_input()
 
 # | is a vertical pipe connecting north and south.
 # - is a horizontal pipe connecting east and west.
@@ -49,6 +49,7 @@ legend = {
     'S': ['up', 'down', 'left', 'right'] # might not need to define this - there's only one and we'll treat it special
 }
 
+# create a legend - map which directions you can go from each char
 # valid chars # TODO is there a pattern here so we could define these programmatically? in a way that's easy to understand?
 # | / up = |,7,F
 # | / down = |,L,J
@@ -62,107 +63,167 @@ legend = {
 # 7 / left = -, F, L
 # F / down = |, J, L
 # F / right = -, J, 7
+# S / up = |, F, 7
+# S / down = |, J, L
+# S / left = -, L, F
+# S / right = -, J, 7
+legend2 = {
+    '|': {
+            'up': ['|','7','F'],
+            'down': ['|','L','J']
+    },
+    '-': {
+            'right':['-','7','J'],
+            'left':['-','F','L']
+    } ,
+    'L': {
+            'up':['|','F','7'],
+            'right':['-','J','7']
+    },
+    'J': {
+            'up':['|','F','7'],
+            'left':['-','L','F']
+    },
+    '7': {
+            'down':['|','J','L'],
+            'left':['-','F','L']
+    },
+    'F': {
+            'down':['|','J','L'],
+            'right':['-','J','7']
+    },
+    'S': {
+            'up':['|','F','7'],
+            'down':['|','J','L'],
+            'left':['-','L','F'],
+            'right':['-','J','7']
+    },
+    '.': {}
+}
 
-
-# build up coordinate / character maps
-coords_by_char = []
-chars_by_coords = []
+# build up coordinate / character map
+chars_by_coords = {}
 start = {}
 for idy, line in enumerate(pipes_raw): # iterate thru lines
-    coords1 = {}
-    coords2 = {}
+    coords = {}
     for idx, char in enumerate(line): # iterate thru chars in the line to find the coords of each char
-        # store coordinates by character (look up coords by char)
-        coords1 = {
-            char: {
-                'x': idx, # x coord is the index of this char in the line (starting with 0)
-                'y': idy # y coord is the line number (starting with 0)
-            }
-        }
-        coords_by_char.append(coords1)
+        coord_str = ','.join([str(idx), str(idy)])
+        chars_by_coords[coord_str] = char # store characters by coordinate (look up chars by coords)
 
         # find the start S
         if char == 'S': # this assumes only one S in the dataset
-            start = coords1
+            start = coord_str
 
-        # store characters by coordinate (look up chars by coords)
-        coord_str = ','.join([str(idx), str(idy)])
-        coords2 = { coord_str: char }
-        chars_by_coords.append(coords2)
-print("coords by char:", coords_by_char)
 print("chars_by_coords:", chars_by_coords)
-print("start", start)
-
-
-    # if char == 'S': # if this is the beginning, return all the possible directions
-    #     return neighbor_coords
-    # else: # otherwise, recursively move through the path
-    #     neighbor_coords = follow_directions('S', start['S'], [])
+# print("start", start)
 
 def get_neighbor_coords(char, coords):
-    char_dirs = legend[char]
+    char_dirs = legend2[char]
     neighbor_coords = []
-    for dir in char_dirs:
-        match dir:
+    (x,y) = coords.split(',')
+    for dir in char_dirs.keys():
+        foo = { # default val - will pass if that direction is out of bounds
+            'dir': dir, 
+            'coords': None
+        }
+        match dir: # TODO update based on new data structure
             case 'up':
-                up = coords['y']-1
+                up = int(y)-1
                 if up < 0: up = None # TODO i think there's a better python syntax for this
                 if up != None: 
-                    neighbor_coords.append({ dir: ','.join([str(coords['x']),str(up)])})
+                    foo = { 
+                        'dir': dir, 
+                        'coords': ','.join([x,str(up)])
+                    }
+                    neighbor_coords.append(foo)
                 else:
-                    neighbor_coords.append({ dir: None })
+                    neighbor_coords.append(foo)
             
             case 'left':
-                left = coords['x']-1
+                left = int(x)-1
                 if left < 0: left = None
                 if left != None: 
-                    neighbor_coords.append({ dir: ','.join(str(left),[str(coords['y'])])})
+                    foo = { 
+                        'dir': dir,
+                        'coords': ','.join([str(left),y])
+                    }
+                    neighbor_coords.append(foo)
                 else:
-                    neighbor_coords.append({ dir: None })
+                    neighbor_coords.append(foo)
             
             case 'down':
-                down = coords['y']+1
+                down = int(y)+1
                 if down > len(pipes_raw)-1: down = None # TODO check for off by one
                 if down != None: 
-                    neighbor_coords.append({ dir: ','.join([str(coords['x']),str(down)])})
+                    foo = { 
+                        'dir': dir,
+                        'coords': ','.join([x,str(down)])
+                    }
+                    neighbor_coords.append(foo)
                 else:
-                    neighbor_coords.append({ dir: None })
+                    neighbor_coords.append(foo)
 
             case 'right':
-                right = coords['x']+1
+                right = int(x)+1
                 if right > len(pipes_raw[0])-1: right = None # TODO check for off by one
                 if right != None: 
-                    neighbor_coords.append({ dir: ','.join([str(right), str(coords['y'])])})
+                    foo = { 
+                        'dir': dir,
+                        'coords': ','.join([str(right), y])
+                    }
+                    neighbor_coords.append(foo)
                 else:
-                    neighbor_coords.append({ dir: None })
+                    neighbor_coords.append(foo)
     return neighbor_coords
 
-neighbor_coords = get_neighbor_coords('S', start['S'])
-print('neighbor coords', neighbor_coords)
+def is_valid_direction(start_char, next_char, direction_traveled):
+    if legend2[start_char].get(direction_traveled, None): # is this a direction we can travel from the start char?
+        if next_char in legend2[start_char][direction_traveled]: # is the next char a char we can travel to from the start char?
+            return True
+        else:
+            return False
+    else:
+        return False
 
-# def follow_directions(char, coords, prev_neighbor_coords):
-#     neighbor_coords = get_neighbor_coords(char, coords)
-#     # check if the neighbor is valid (i.e. can connect to this piece)
-#     for coords in neighbor_coords:
+def follow_directions(char, coords, neighbor_coords, prev_coords, move_count):
+    move_count = move_count + 1
+    new_char = None
+    print("starting with", char)
+    print("   prev coords", prev_coords)
+    print("   all neighbor corods", neighbor_coords)
+    for neighbor_coord in neighbor_coords:
+        print("   this neighbor coords", neighbor_coord['coords'])
+        if neighbor_coord['coords'] == prev_coords or neighbor_coord['coords'] == None: # don't go backwards or out of bounds
+            print("     skipping - backwards")
+            continue 
+        start_char = char
+        next_char = chars_by_coords[neighbor_coord['coords']]
+        print("   evaluating next_char", next_char)
+        print("   direction", neighbor_coord['dir'])
+        if next_char == '.':
+            print("     skipping - .")
+            continue
+        if next_char == 'S':
+            # we've reached the end of the loop!
+            print("done!")
+            print("move count", move_count)
+            print("answer part 1", move_count/2) # get the furthest point by dividing the moves in half
+            return move_count # TODO check for off by 1
+        is_valid_dir = is_valid_direction(start_char, next_char, neighbor_coord['dir'])
+        print("   is valid dir", is_valid_dir)
+        if is_valid_dir == True:
+            new_char = next_char
+            new_coords = neighbor_coord['coords']
+            new_neighbor_coords = get_neighbor_coords(new_char, new_coords)
+            print("  found valid direction - breaking")
+            break # break out of this for loop and then recurse
+    if not new_char:
+        print("didn't find a valid route from here")
+        return
+    print("recursing")
+    move_count = follow_directions(new_char, new_coords, new_neighbor_coords, coords, move_count)
 
-# def is_valid_direction(start_char, next_char, direction_traveled):
-    
-
-# create function is_valid_direction(start_char, next_char, direction_traveled)
-#   in that function,
-#   if next char is S, we've reached the end (could also check this before calling this function)
-#   if next char is ., we it's automatically not valid (could also check this before calling this function)
-#   compare chars to each other and see if they fit together in the direction they're stringed
-# each char can only validly go in two directions. but don't go backwards, so it can only go one direction.
-# so use is_valid_direction on all non-backwards directions to find the correct way to go
-# need to use recursion because we don't know the path
-# S can only go in 2 valid directions, so pick one randomly and start going thru the loop from there (using follow_directions()), ending in S
-
-
-# for coords in neighbor_coords:
-#     char = chars_by_coords[coords]
-#     coords_arr = coords.split(',')
-#     coords_dict = { 'x': coords_arr[0], 'y': coords_arr[1] }
-#     follow_directions(char, coords_dict, neighbor_coords)
-
-# TODO need to check if direction connects to this pipe
+neighbor_coords = get_neighbor_coords('S', start)
+# print('neighbor coords', neighbor_coords)
+move_count = follow_directions('S', start, neighbor_coords, None, 0) # no previous coords at the beginning
+print("move count", move_count) # TODO why is it not bubbling up?
